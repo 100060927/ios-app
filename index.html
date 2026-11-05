@@ -46,23 +46,25 @@ h1{margin:0;font-size:clamp(22px,3vw,30px);font-weight:600;letter-spacing:-0.01e
 .saved{min-height:1.4em}
 
 .tablebox{border:1px solid var(--line);border-radius:24px;overflow-x:auto;background:var(--surface)}
-table{width:100%;border-collapse:collapse;min-width:1280px}
+table{width:100%;border-collapse:collapse;min-width:1440px}
 th,td{border-inline-start:1px solid var(--line);padding:8px 10px;vertical-align:middle;text-align:start}
 th:first-child,td:first-child{border-inline-start:0}
 th{height:52px;font-weight:600;font-size:15px;border-bottom:1.5px solid var(--line);white-space:nowrap}
 tbody tr+tr td{border-top:1px solid var(--line)}
-th.c-site,td.c-site{width:11%}
-th.c-issue,td.c-issue{width:19%}
-th.c-date,td.c-date{width:10%}
-th.c-status,td.c-status{width:10%}
-th.c-name,td.c-name{width:10%}
-th.c-remark,td.c-remark{width:30%}
+th.c-post,td.c-post{width:9%}
+th.c-site,td.c-site{width:9%}
+th.c-issue,td.c-issue{width:25%}
+th.c-date,td.c-date{width:9%}
+th.c-status,td.c-status{width:9%}
+th.c-name,td.c-name{width:9%}
+th.c-remark,td.c-remark{width:25%}
+.field.post-title{font-weight:600}
 th.c-tools,td.c-tools{width:88px}
 
 .field{width:100%;min-height:40px;padding:8px 14px;border:1px solid color-mix(in srgb,var(--line) 45%,transparent);border-radius:999px;background:transparent;color:var(--ink);font:inherit;font-size:14px}
 .field:hover{border-color:var(--line)}
 textarea.field{border-radius:16px;resize:vertical;min-height:44px;line-height:1.4;display:block}
-textarea.field.remark{min-height:104px;font-size:15px;line-height:1.55;padding:12px 16px}
+textarea.field.big{min-height:104px;font-size:15px;line-height:1.55;padding:12px 16px}
 select.field{appearance:none;-webkit-appearance:none;cursor:pointer;padding-left:16px;padding-right:38px;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 14px center}
@@ -107,7 +109,9 @@ input[type="date"].field::-webkit-date-and-time-value{text-align:start;margin:0}
   tbody tr+tr td{border-top:0}
   td{border:0 !important;padding:8px 0}
   td::before{content:attr(data-label);display:block;font-size:13px;font-weight:500;color:var(--muted);margin-bottom:5px}
-  td.c-tools::before{display:none}
+  td.c-tools::before,td.c-post::before{display:none}
+  .field.post-title{font-size:17px;border-color:transparent;padding-left:4px;min-height:44px}
+  .field.post-title:focus{border-color:var(--line)}
   .tools{justify-content:flex-end;gap:10px}
   .icon{width:44px;height:44px}
   .btn{flex:1 1 auto;justify-content:center}
@@ -167,8 +171,9 @@ input[type="date"].field::-webkit-date-and-time-value{text-align:start;margin:0}
     <table dir="rtl">
       <thead>
         <tr>
+          <th class="c-post" scope="col">Post</th>
           <th class="c-site" scope="col">Site Ref</th>
-          <th class="c-issue" scope="col">Issue (by Miro)</th>
+          <th class="c-issue" scope="col">Issue</th>
           <th class="c-date" scope="col">Date of Issue</th>
           <th class="c-status" scope="col">Status</th>
           <th class="c-date" scope="col">Fixing Date</th>
@@ -189,8 +194,9 @@ input[type="date"].field::-webkit-date-and-time-value{text-align:start;margin:0}
   var KEY = "maintenance-log-v1";
   var STATUSES = ["Pending","In progress","Fixed"];
   var COLS = [
+    {k:"title",  label:"Post"},
     {k:"site",   label:"Site Ref"},
-    {k:"issue",  label:"Issue (by Miro)"},
+    {k:"issue",  label:"Issue"},
     {k:"issued", label:"Date of Issue"},
     {k:"status", label:"Status"},
     {k:"fixed",  label:"Fixing Date"},
@@ -199,7 +205,7 @@ input[type="date"].field::-webkit-date-and-time-value{text-align:start;margin:0}
   ];
   var DEFAULT_SITES = ["Fujairah"];
 
-  function blank(){ return {site:"",issue:"",issued:"",status:"",fixed:"",name:"",remark:""}; }
+  function blank(){ return {title:"",site:"",issue:"",issued:"",status:"",fixed:"",name:"",remark:""}; }
   var rows = null;
   try { var s = localStorage.getItem(KEY); if (s) rows = JSON.parse(s); } catch(e) {}
   if (!Array.isArray(rows) || !rows.length) { rows = []; for (var i=0;i<5;i++) rows.push(blank()); rows[0].site = "Fujairah"; }
@@ -261,7 +267,10 @@ input[type="date"].field::-webkit-date-and-time-value{text-align:start;margin:0}
 
   function makeField(col, r, idx){
     var f, label = col.label + ", row " + (idx+1);
-    if (col.k==="status"){
+    if (col.k==="title"){
+      f = el("input",{type:"text",class:"field post-title","aria-label":"Post name, row "+(idx+1),dir:"auto",placeholder:"Post "+(idx+1),autocomplete:"off"});
+      f.value = r.title || "";
+    } else if (col.k==="status"){
       f = el("select",{class:"field status","aria-label":label});
       f.appendChild(el("option",{value:"",text:"Choose"}));
       STATUSES.forEach(function(s){ f.appendChild(el("option",{value:s,text:s})); });
@@ -286,7 +295,7 @@ input[type="date"].field::-webkit-date-and-time-value{text-align:start;margin:0}
         var inp = document.querySelector('.adder[data-kind="'+kind+'"] input'); if (inp) inp.focus({preventScroll:true});
       });
     } else {
-      f = el("textarea",{class:col.k==="remark"?"field remark":"field","aria-label":label,dir:"auto",rows:col.k==="remark"?"4":"1"});
+      f = el("textarea",{class:(col.k==="remark"||col.k==="issue")?"field big":"field","aria-label":label,dir:"auto",rows:(col.k==="remark"||col.k==="issue")?"4":"1"});
       f.value = r[col.k] || "";
     }
     f.addEventListener("input", function(){
@@ -309,13 +318,13 @@ input[type="date"].field::-webkit-date-and-time-value{text-align:start;margin:0}
   function render(focusIdx){
     tbody.innerHTML = "";
     if (!rows.length){
-      var tr = el("tr"); var td = el("td",{colspan:"8",class:"empty",text:"No rows yet. Tap “Add row” to start."});
+      var tr = el("tr"); var td = el("td",{colspan:"9",class:"empty",text:"No rows yet. Tap “Add row” to start."});
       tr.appendChild(td); tbody.appendChild(tr); return;
     }
     rows.forEach(function(r, idx){
       var tr = el("tr");
       COLS.forEach(function(col){
-        var cls = col.k==="site"?"c-site":col.k==="issue"?"c-issue":(col.k==="issued"||col.k==="fixed")?"c-date":col.k==="status"?"c-status":col.k==="name"?"c-name":"c-remark";
+        var cls = col.k==="title"?"c-post":col.k==="site"?"c-site":col.k==="issue"?"c-issue":(col.k==="issued"||col.k==="fixed")?"c-date":col.k==="status"?"c-status":col.k==="name"?"c-name":"c-remark";
         var td = el("td",{"data-label":col.label}); if (cls) td.className = cls;
         td.appendChild(makeField(col, r, idx));
         tr.appendChild(td);
@@ -350,9 +359,9 @@ input[type="date"].field::-webkit-date-and-time-value{text-align:start;margin:0}
   document.getElementById("saveBtn").addEventListener("click", async function(){
     if (!window.XLSX){ msg.textContent = "The Excel tool didn’t load. Check your connection and try again."; return; }
     var aoa = [COLS.map(function(c){return c.label;})];
-    rows.forEach(function(r){ aoa.push(COLS.map(function(c){ return (c.k==="issued"||c.k==="fixed") ? isoToDmy(r[c.k]) : (r[c.k]||""); })); });
+    rows.forEach(function(r,i){ aoa.push(COLS.map(function(c){ return c.k==="title" ? (r.title||"Post "+(i+1)) : (c.k==="issued"||c.k==="fixed") ? isoToDmy(r[c.k]) : (r[c.k]||""); })); });
     var ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws["!cols"] = [{wch:14},{wch:40},{wch:14},{wch:12},{wch:14},{wch:16},{wch:40}];
+    ws["!cols"] = [{wch:12},{wch:14},{wch:40},{wch:14},{wch:12},{wch:14},{wch:16},{wch:40}];
     var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Log");
     if (!wb.Workbook) wb.Workbook = {}; wb.Workbook.Views = [{RTL:true}];
     var buf = XLSX.write(wb,{bookType:"xlsx",type:"array"});
@@ -402,6 +411,7 @@ input[type="date"].field::-webkit-date-and-time-value{text-align:start;margin:0}
   function matchCol(h){
     h = String(h||"").toLowerCase().replace(/\s+/g," ").trim();
     if (!h) return null;
+    if (h.indexOf("post")===0) return "title";
     if (h.indexOf("site")>=0) return "site";
     if (h.indexOf("date of issue")>=0 || h.indexOf("issue date")>=0) return "issued";
     if (h.indexOf("fix")>=0) return "fixed";
@@ -435,6 +445,7 @@ input[type="date"].field::-webkit-date-and-time-value{text-align:start;margin:0}
             var v = row[map[k]];
             if (k==="issued"||k==="fixed") r[k] = normDate(v);
             else if (k==="status") r[k] = normStatus(v);
+            else if (k==="title"){ var t = String(v==null?"":v).trim(); r[k] = /^post\s*\d+$/i.test(t) ? "" : t; }
             else r[k] = String(v==null?"":v).trim();
             if (r[k]) any = true;
           });
