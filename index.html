@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Maintenance Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600&display=swap">
+<script src="./xlsx.full.min.js"></script>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<link rel="icon" href="./icon-192.png">
+<meta name="theme-color" content="#F6EFDF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1E1C18" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Maint. Log">
+<style>
+:root{
+  --bg:#F6EFDF; --surface:#FBF7EE; --ink:#151412; --muted:#5A5245; --line:#151412;
+  --pending:#E5534B; --progress:#F2C94C; --fixed:#6DBE72; --chip-ink:#151412;
+  --focus:#2F5FD0;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#1E1C18; --surface:#26231E; --ink:#F3ECDD; --muted:#B9AF9C; --line:#CFC6B4;
+    --pending:#E0605A; --progress:#E8C24A; --fixed:#6DBE72; --chip-ink:#151412;
+    --focus:#8FB0FF; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1E1C18; --surface:#26231E; --ink:#F3ECDD; --muted:#B9AF9C; --line:#CFC6B4;
+  --pending:#E0605A; --progress:#E8C24A; --fixed:#6DBE72; --chip-ink:#151412;
+  --focus:#8FB0FF; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Rubik,"Segoe UI",Tahoma,Arial,sans-serif;font-size:15px;line-height:1.4}
+.wrap{max-width:1400px;margin:0 auto;padding:32px clamp(14px,4vw,48px) 48px}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}
+h1{margin:0;font-size:clamp(22px,3vw,30px);font-weight:600;letter-spacing:-0.01em}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.btn{height:44px;padding:0 20px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);font:inherit;font-size:15px;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.btn:hover{background:color-mix(in srgb,var(--ink) 7%,transparent)}
+.btn.solid{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:500}
+.btn.solid:hover{opacity:.9}
+.btn svg{flex:none}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 22px;margin-bottom:16px;font-size:14px;color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:18px}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+.dot{width:12px;height:12px;border-radius:999px;display:inline-block}
+.saved{min-height:1.4em}
+
+.tablebox{border:1px solid var(--line);border-radius:24px;overflow-x:auto;background:var(--surface)}
+table{width:100%;border-collapse:collapse;min-width:1280px}
+th,td{border-inline-start:1px solid var(--line);padding:8px 10px;vertical-align:middle;text-align:start}
+th:first-child,td:first-child{border-inline-start:0}
+th{height:52px;font-weight:600;font-size:15px;border-bottom:1.5px solid var(--line);white-space:nowrap}
+tbody tr+tr td{border-top:1px solid var(--line)}
+th.c-site,td.c-site{width:11%}
+th.c-issue,td.c-issue{width:19%}
+th.c-date,td.c-date{width:10%}
+th.c-status,td.c-status{width:10%}
+th.c-name,td.c-name{width:10%}
+th.c-remark,td.c-remark{width:30%}
+th.c-tools,td.c-tools{width:88px}
+
+.field{width:100%;min-height:40px;padding:8px 14px;border:1px solid color-mix(in srgb,var(--line) 45%,transparent);border-radius:999px;background:transparent;color:var(--ink);font:inherit;font-size:14px}
+.field:hover{border-color:var(--line)}
+textarea.field{border-radius:16px;resize:vertical;min-height:44px;line-height:1.4;display:block}
+textarea.field.remark{min-height:104px;font-size:15px;line-height:1.55;padding:12px 16px}
+select.field{appearance:none;-webkit-appearance:none;cursor:pointer;padding-inline-end:34px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center}
+[dir="rtl"] select.field{background-position:left 14px center}
+select.field option{color:#151412;background:#fff}
+select.status[data-v="Pending"]{background-color:var(--pending);border-color:var(--pending);color:var(--chip-ink);font-weight:500}
+select.status[data-v="In progress"]{background-color:var(--progress);border-color:var(--progress);color:var(--chip-ink);font-weight:500}
+select.status[data-v="Fixed"]{background-color:var(--fixed);border-color:var(--fixed);color:var(--chip-ink);font-weight:500}
+input[type="date"].field{padding-inline:12px}
+.tools{display:flex;gap:6px;justify-content:center}
+.icon{width:38px;height:38px;border-radius:999px;border:1px solid color-mix(in srgb,var(--line) 45%,transparent);background:transparent;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.icon:hover{border-color:var(--line);background:color-mix(in srgb,var(--ink) 7%,transparent)}
+.empty{padding:40px 20px;text-align:center;color:var(--muted)}
+.hint{margin-top:14px;font-size:13px;color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.lists{border:1px solid var(--line);border-radius:24px;background:var(--surface);margin-bottom:18px}
+.lists summary{list-style:none;cursor:pointer;padding:14px 20px;font-weight:500;display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:24px}
+.lists summary::-webkit-details-marker{display:none}
+.lists summary svg{transition:transform .2s}
+.lists[open] summary svg{transform:rotate(180deg)}
+.lists-body{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;padding:4px 20px 20px}
+.list h2{margin:0 0 10px;font-size:15px;font-weight:600}
+.adder{display:flex;gap:8px}
+.adder .field{flex:1}
+.adder .btn{height:40px;padding:0 16px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;min-height:34px}
+.chip{display:inline-flex;align-items:center;gap:4px;height:34px;padding-inline:14px 6px;border:1px solid var(--line);border-radius:999px;font-size:14px}
+.chip button{width:26px;height:26px;border:0;border-radius:999px;background:transparent;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.chip button:hover{background:color-mix(in srgb,var(--ink) 10%,transparent)}
+.chips .none{color:var(--muted);font-size:14px;align-self:center}
+
+/* Phone: each row becomes a rounded card */
+@media (max-width:760px){
+  .tablebox{border:0;background:transparent;border-radius:0;overflow:visible}
+  table{min-width:0}
+  thead{display:none}
+  tbody,tr,td{display:block;width:100% !important}
+  tbody tr{border:1px solid var(--line);border-radius:22px;background:var(--surface);padding:6px 14px 12px;margin-bottom:14px}
+  tbody tr+tr td{border-top:0}
+  td{border:0 !important;padding:8px 0}
+  td::before{content:attr(data-label);display:block;font-size:13px;font-weight:500;color:var(--muted);margin-bottom:5px}
+  td.c-tools::before{display:none}
+  .tools{justify-content:flex-end;gap:10px}
+  .icon{width:44px;height:44px}
+  .btn{flex:1 1 auto;justify-content:center}
+}
+@media (prefers-reduced-motion:no-preference){.btn,.icon,.field{transition:background-color .15s,border-color .15s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Maintenance Log</h1>
+    <div class="actions">
+      <button class="btn" id="addRow" type="button">
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add row</button>
+      <button class="btn" id="openBtn" type="button">
+        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Open file</button>
+      <button class="btn solid" id="saveBtn" type="button">
+        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Save to device</button>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" hidden>
+    </div>
+  </header>
+
+  <details class="lists" id="listsPanel">
+    <summary>Site refs and names
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="lists-body">
+      <div class="list">
+        <h2 id="sitesH">Site refs</h2>
+        <form class="adder" data-kind="sites">
+          <input class="field" dir="auto" placeholder="New site ref" aria-labelledby="sitesH" autocomplete="off">
+          <button class="btn solid" type="submit">Add</button>
+        </form>
+        <div class="chips" id="sitesChips"></div>
+      </div>
+      <div class="list">
+        <h2 id="namesH">Names</h2>
+        <form class="adder" data-kind="names">
+          <input class="field" dir="auto" placeholder="New name" aria-labelledby="namesH" autocomplete="off">
+          <button class="btn solid" type="submit">Add</button>
+        </form>
+        <div class="chips" id="namesChips"></div>
+      </div>
+    </div>
+  </details>
+
+  <div class="bar">
+    <div class="legend" aria-label="Status colors">
+      <span><i class="dot" style="background:var(--pending)"></i>Pending</span>
+      <span><i class="dot" style="background:var(--progress)"></i>In progress</span>
+      <span><i class="dot" style="background:var(--fixed)"></i>Fixed</span>
+    </div>
+    <div class="saved" id="savedMsg" role="status" aria-live="polite"></div>
+  </div>
+
+  <div class="tablebox">
+    <table dir="rtl">
+      <thead>
+        <tr>
+          <th class="c-site" scope="col">Site Ref</th>
+          <th class="c-issue" scope="col">Issue (by Miro)</th>
+          <th class="c-date" scope="col">Date of Issue</th>
+          <th class="c-status" scope="col">Status</th>
+          <th class="c-date" scope="col">Fixing Date</th>
+          <th class="c-name" scope="col">Name</th>
+          <th class="c-remark" scope="col">Remark</th>
+          <th class="c-tools" scope="col"><span class="sr">Row actions</span></th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <p class="hint">Your work is kept in this browser automatically. Use “Save to device” to keep an Excel copy you can open again here or in Excel.</p>
+</div>
+
+
+<script>
+(function(){
+  var KEY = "maintenance-log-v1";
+  var STATUSES = ["Pending","In progress","Fixed"];
+  var COLS = [
+    {k:"site",   label:"Site Ref"},
+    {k:"issue",  label:"Issue (by Miro)"},
+    {k:"issued", label:"Date of Issue"},
+    {k:"status", label:"Status"},
+    {k:"fixed",  label:"Fixing Date"},
+    {k:"name",   label:"Name"},
+    {k:"remark", label:"Remark"}
+  ];
+  var DEFAULT_SITES = ["Fujairah"];
+
+  function blank(){ return {site:"",issue:"",issued:"",status:"",fixed:"",name:"",remark:""}; }
+  var rows = null;
+  try { var s = localStorage.getItem(KEY); if (s) rows = JSON.parse(s); } catch(e) {}
+  if (!Array.isArray(rows) || !rows.length) { rows = []; for (var i=0;i<5;i++) rows.push(blank()); rows[0].site = "Fujairah"; }
+
+  var OKEY = "maintenance-log-options-v1";
+  var opts = null;
+  try { var so = localStorage.getItem(OKEY); if (so) opts = JSON.parse(so); } catch(e) {}
+  if (!opts || !Array.isArray(opts.sites) || !Array.isArray(opts.names)) opts = {sites:DEFAULT_SITES.slice(), names:[]};
+  function addOpt(kind, v){
+    v = String(v||"").trim(); if (!v) return false;
+    var low = v.toLowerCase();
+    if (opts[kind].some(function(x){ return x.toLowerCase()===low; })) return false;
+    opts[kind].push(v); opts[kind].sort(function(a,b){ return a.localeCompare(b); }); return true;
+  }
+  function saveOpts(){ try { localStorage.setItem(OKEY, JSON.stringify(opts)); } catch(e) {} }
+  rows.forEach(function(r){ addOpt("sites", r.site); addOpt("names", r.name); });
+  saveOpts();
+
+  var tbody = document.getElementById("rows");
+  var msg = document.getElementById("savedMsg");
+  var saveTimer = null;
+
+  function persist(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){
+      try { localStorage.setItem(KEY, JSON.stringify(rows)); msg.textContent = "Saved in this browser"; }
+      catch(e){ msg.textContent = "Couldn’t save in this browser — use “Save to device”"; }
+    }, 400);
+  }
+
+  function renderChips(){
+    ["sites","names"].forEach(function(kind){
+      var box = document.getElementById(kind+"Chips"); box.innerHTML = "";
+      if (!opts[kind].length){ box.appendChild(el("span",{class:"none",text:kind==="sites"?"No site refs yet":"No names yet"})); return; }
+      opts[kind].forEach(function(v){
+        var c = el("span",{class:"chip",dir:"auto"}); c.appendChild(el("span",{text:v}));
+        var x = el("button",{type:"button","aria-label":"Remove "+v,title:"Remove "+v});
+        x.innerHTML = '<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+        x.addEventListener("click", function(){ opts[kind] = opts[kind].filter(function(y){ return y!==v; }); saveOpts(); renderChips(); render(); });
+        c.appendChild(x); box.appendChild(c);
+      });
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".adder"), function(form){
+    form.addEventListener("submit", function(e){
+      e.preventDefault();
+      var inp = form.querySelector("input"), kind = form.getAttribute("data-kind");
+      if (addOpt(kind, inp.value)){ saveOpts(); renderChips(); render(); msg.textContent = "Added “"+inp.value.trim()+"”"; }
+      else if (inp.value.trim()) msg.textContent = "“"+inp.value.trim()+"” is already in the list";
+      inp.value = ""; inp.focus();
+    });
+  });
+
+  function el(tag, attrs){
+    var n = document.createElement(tag);
+    for (var a in attrs) { if (a==="text") n.textContent = attrs[a]; else n.setAttribute(a, attrs[a]); }
+    return n;
+  }
+
+  function makeField(col, r, idx){
+    var f, label = col.label + ", row " + (idx+1);
+    if (col.k==="status"){
+      f = el("select",{class:"field status","aria-label":label});
+      f.appendChild(el("option",{value:"",text:"Choose"}));
+      STATUSES.forEach(function(s){ f.appendChild(el("option",{value:s,text:s})); });
+      f.value = r.status || ""; f.setAttribute("data-v", f.value);
+    } else if (col.k==="issued" || col.k==="fixed"){
+      f = el("input",{type:"date",class:"field","aria-label":label,dir:"ltr"});
+      f.value = r[col.k] || "";
+    } else if (col.k==="site" || col.k==="name"){
+      var kind = col.k==="site" ? "sites" : "names";
+      f = el("select",{class:"field","aria-label":label,dir:"auto"});
+      f.appendChild(el("option",{value:"",text:"Choose"}));
+      var list = opts[kind].slice();
+      if (r[col.k] && list.indexOf(r[col.k])<0) list.push(r[col.k]);
+      list.forEach(function(v){ f.appendChild(el("option",{value:v,text:v})); });
+      f.appendChild(el("option",{value:"__add",text:col.k==="site"?"+ Add new site…":"+ Add new name…"}));
+      f.value = r[col.k] || "";
+      f.addEventListener("change", function(){
+        if (f.value!=="__add") return;
+        f.value = r[col.k] || "";
+        var panel = document.getElementById("listsPanel"); panel.open = true;
+        panel.scrollIntoView({block:"start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"});
+        var inp = document.querySelector('.adder[data-kind="'+kind+'"] input'); if (inp) inp.focus({preventScroll:true});
+      });
+    } else {
+      f = el("textarea",{class:col.k==="remark"?"field remark":"field","aria-label":label,dir:"auto",rows:col.k==="remark"?"4":"1"});
+      f.value = r[col.k] || "";
+    }
+    f.addEventListener("input", function(){
+      if (f.value==="__add") return;
+      r[col.k] = f.value;
+      if (col.k==="status") f.setAttribute("data-v", f.value);
+      persist();
+    });
+    f.addEventListener("change", function(){ if (f.value==="__add") return; r[col.k] = f.value; persist(); });
+    return f;
+  }
+
+  function iconBtn(path, label, fn){
+    var b = el("button",{type:"button",class:"icon","aria-label":label,title:label});
+    b.innerHTML = '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+path+'</svg>';
+    b.addEventListener("click", fn);
+    return b;
+  }
+
+  function render(focusIdx){
+    tbody.innerHTML = "";
+    if (!rows.length){
+      var tr = el("tr"); var td = el("td",{colspan:"8",class:"empty",text:"No rows yet. Tap “Add row” to start."});
+      tr.appendChild(td); tbody.appendChild(tr); return;
+    }
+    rows.forEach(function(r, idx){
+      var tr = el("tr");
+      COLS.forEach(function(col){
+        var cls = col.k==="site"?"c-site":col.k==="issue"?"c-issue":(col.k==="issued"||col.k==="fixed")?"c-date":col.k==="status"?"c-status":col.k==="name"?"c-name":"c-remark";
+        var td = el("td",{"data-label":col.label}); if (cls) td.className = cls;
+        td.appendChild(makeField(col, r, idx));
+        tr.appendChild(td);
+      });
+      var tt = el("td",{class:"c-tools"}); var tools = el("div",{class:"tools"});
+      tools.appendChild(iconBtn('<rect x="9" y="9" width="12" height="12" rx="3"/><path d="M5 15V6a3 3 0 0 1 3-3h7"/>',"Duplicate row "+(idx+1),function(){
+        var c = blank(); c.site=r.site; c.name=r.name; c.status=r.status; c.issued=r.issued; c.issue=r.issue;
+        rows.splice(idx+1,0,c); persist(); render(idx+1);
+      }));
+      tools.appendChild(iconBtn('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',"Delete row "+(idx+1),function(){
+        var has = Object.keys(r).some(function(k){ return (r[k]||"").trim(); });
+        if (has && !confirm("Delete row "+(idx+1)+"?")) return;
+        rows.splice(idx,1); persist(); render();
+      }));
+      tt.appendChild(tools); tr.appendChild(tt); tbody.appendChild(tr);
+    });
+    if (typeof focusIdx==="number"){ var t = tbody.children[focusIdx]; if (t){ var f=t.querySelector(".field"); if(f) f.focus(); } }
+  }
+
+  document.getElementById("addRow").addEventListener("click", function(){
+    var c = blank(); var last = rows[rows.length-1];
+    if (last) c.site = last.site;
+    rows.push(c); persist(); render(rows.length-1);
+  });
+
+  /* ---------- Save as Excel ---------- */
+  function isoToDmy(v){ var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v||""); return m? m[3]+"/"+m[2]+"/"+m[1] : (v||""); }
+  function pad(n){ return (n<10?"0":"")+n; }
+
+  var downloadsP = (window.claude && typeof window.claude.use==="function") ? window.claude.use("downloads").catch(function(){return null;}) : Promise.resolve(null);
+
+  document.getElementById("saveBtn").addEventListener("click", async function(){
+    if (!window.XLSX){ msg.textContent = "The Excel tool didn’t load. Check your connection and try again."; return; }
+    var aoa = [COLS.map(function(c){return c.label;})];
+    rows.forEach(function(r){ aoa.push(COLS.map(function(c){ return (c.k==="issued"||c.k==="fixed") ? isoToDmy(r[c.k]) : (r[c.k]||""); })); });
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = [{wch:14},{wch:40},{wch:14},{wch:12},{wch:14},{wch:16},{wch:40}];
+    var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Log");
+    if (!wb.Workbook) wb.Workbook = {}; wb.Workbook.Views = [{RTL:true}];
+    var buf = XLSX.write(wb,{bookType:"xlsx",type:"array"});
+    var d = new Date();
+    var filename = "Maintenance Log "+pad(d.getDate())+"-"+pad(d.getMonth()+1)+"-"+d.getFullYear()+".xlsx";
+    var downloads = await downloadsP;
+    if (downloads){
+      try { await downloads.save({filename:filename, data:new Blob([buf])}); msg.textContent = "Saved to your device"; }
+      catch(e){
+        if (e && e.code==="declined") msg.textContent = "Save cancelled";
+        else if (e && e.code==="rate_limited") msg.textContent = "A save is already waiting — finish that one first";
+        else msg.textContent = "Saving a file isn’t available here";
+      }
+    } else if (navigator.canShare && /iPhone|iPad|iPod/.test(navigator.userAgent) &&
+               navigator.canShare({files:[new File([buf], filename, {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})]})){
+      try {
+        await navigator.share({files:[new File([buf], filename, {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})]});
+        msg.textContent = "Saved to your device";
+      } catch(e){ msg.textContent = (e && e.name==="AbortError") ? "Save cancelled" : "Couldn’t open the share sheet. Try again."; }
+    } else {
+      var url = URL.createObjectURL(new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
+      var a = document.createElement("a"); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+      msg.textContent = "Saved to your device";
+    }
+  });
+
+  /* ---------- Open a saved file ---------- */
+  var fileInput = document.getElementById("fileInput");
+  document.getElementById("openBtn").addEventListener("click", function(){ fileInput.value=""; fileInput.click(); });
+
+  function normDate(v){
+    if (v instanceof Date && !isNaN(v)) return v.getFullYear()+"-"+pad(v.getMonth()+1)+"-"+pad(v.getDate());
+    var s = String(v||"").trim(); if (!s) return "";
+    var m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s); if (m) return m[1]+"-"+pad(+m[2])+"-"+pad(+m[3]);
+    m = /^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/.exec(s);
+    if (m){ var y=m[3].length===2?"20"+m[3]:m[3]; return y+"-"+pad(+m[2])+"-"+pad(+m[1]); }
+    return "";
+  }
+  function normStatus(v){
+    var s = String(v||"").trim().toLowerCase(); if (!s) return "";
+    if (s.indexOf("fix")===0 || s==="done" || s==="closed") return "Fixed";
+    if (s.indexOf("progress")>=0) return "In progress";
+    if (s.indexOf("pend")===0 || s==="open") return "Pending";
+    return "";
+  }
+  function matchCol(h){
+    h = String(h||"").toLowerCase().replace(/\s+/g," ").trim();
+    if (!h) return null;
+    if (h.indexOf("site")>=0) return "site";
+    if (h.indexOf("date of issue")>=0 || h.indexOf("issue date")>=0) return "issued";
+    if (h.indexOf("fix")>=0) return "fixed";
+    if (h.indexOf("issue")>=0) return "issue";
+    if (h.indexOf("status")>=0) return "status";
+    if (h.indexOf("name")>=0) return "name";
+    if (h.indexOf("remark")>=0) return "remark";
+    return null;
+  }
+
+  fileInput.addEventListener("change", function(){
+    var file = fileInput.files && fileInput.files[0]; if (!file) return;
+    if (!window.XLSX){ msg.textContent = "The Excel tool didn’t load. Check your connection and try again."; return; }
+    var reader = new FileReader();
+    reader.onload = function(){
+      try {
+        var wb = XLSX.read(new Uint8Array(reader.result), {type:"array", cellDates:true});
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        var data = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:""});
+        var hi = -1, map = null;
+        for (var i=0;i<Math.min(data.length,15);i++){
+          var m = {}, n = 0;
+          data[i].forEach(function(h,ci){ var k = matchCol(h); if (k && !(k in m)){ m[k]=ci; n++; } });
+          if (n>=3){ hi=i; map=m; break; }
+        }
+        if (hi<0){ msg.textContent = "Couldn’t find the column headings in that file (Site Ref, Issue, Status…)"; return; }
+        var out = [];
+        for (var j=hi+1;j<data.length;j++){
+          var row = data[j], r = blank(), any = false;
+          Object.keys(map).forEach(function(k){
+            var v = row[map[k]];
+            if (k==="issued"||k==="fixed") r[k] = normDate(v);
+            else if (k==="status") r[k] = normStatus(v);
+            else r[k] = String(v==null?"":v).trim();
+            if (r[k]) any = true;
+          });
+          if (any) out.push(r);
+        }
+        if (!out.length){ msg.textContent = "That file has headings but no rows"; return; }
+        if (rows.some(function(r){ return Object.keys(r).some(function(k){ return (r[k]||"").trim(); }); }) &&
+            !confirm("Replace the rows on screen with the "+out.length+" rows from “"+file.name+"”?")) return;
+        rows = out; rows.forEach(function(r){ addOpt("sites", r.site); addOpt("names", r.name); }); saveOpts(); renderChips(); persist(); render();
+        msg.textContent = "Opened “"+file.name+"”";
+      } catch(e){ msg.textContent = "Couldn’t read that file. Choose an .xlsx or .csv file."; }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  renderChips();
+  render();
+  if ("serviceWorker" in navigator && location.protocol==="https:") {
+    navigator.serviceWorker.register("./sw.js").catch(function(){});
+  }
+})();
+</script>
+</body>
+</html>
