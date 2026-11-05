@@ -167,7 +167,7 @@ input[type="date"].field::-webkit-date-and-time-value{text-align:start;margin:0}
       <span><i class="dot" style="background:var(--progress)"></i>In progress</span>
       <span><i class="dot" style="background:var(--fixed)"></i>Fixed</span>
     </div>
-    <div class="saved" id="savedMsg" role="status" aria-live="polite"></div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><div class="saved" id="savedMsg" role="status" aria-live="polite"></div><button class="btn solid" id="readyBtn" type="button" hidden style="height:40px">Tap to save</button></div>
   </div>
 
   <div class="tablebox">
@@ -371,15 +371,37 @@ input[type="date"].field::-webkit-date-and-time-value{text-align:start;margin:0}
       return;
     }
     var file = new File([data], filename, {type:mime});
-    if (navigator.canShare && /iPhone|iPad|iPod/.test(navigator.userAgent) && navigator.canShare({files:[file]})){
+    var iOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+    if (navigator.canShare && iOS && navigator.canShare({files:[file]})){
       try { await navigator.share({files:[file]}); msg.textContent = "Saved to your device"; }
-      catch(e){ msg.textContent = (e && e.name==="AbortError") ? "Save cancelled" : "Couldn’t open the share sheet. Try again."; }
+      catch(e){
+        if (e && e.name==="AbortError") msg.textContent = "Save cancelled";
+        else offerTap(file, filename);   /* iPhone needs a fresh tap after the file takes a moment to build */
+      }
+      return;
+    }
+    if (iOS){
+      var u = URL.createObjectURL(new Blob([data],{type:mime}));
+      var w = window.open(u, "_blank");
+      if (!w) location.href = u;
+      msg.textContent = "Opened the file — use the share button to save it";
       return;
     }
     var url = URL.createObjectURL(new Blob([data],{type:mime}));
     var a = document.createElement("a"); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
     msg.textContent = "Saved to your device";
+  }
+  var readyBtn = document.getElementById("readyBtn");
+  function offerTap(file, filename){
+    readyBtn.hidden = false;
+    readyBtn.textContent = /\.pdf$/i.test(filename) ? "Tap to save PDF" : "Tap to save Excel";
+    msg.textContent = "Your file is ready";
+    readyBtn.onclick = async function(){
+      readyBtn.hidden = true;
+      try { await navigator.share({files:[file]}); msg.textContent = "Saved to your device"; }
+      catch(e){ msg.textContent = (e && e.name==="AbortError") ? "Save cancelled" : "Couldn’t open the share sheet ("+(e && e.name || "error")+")"; }
+    };
   }
   function stamp(){ var d = new Date(); return pad(d.getDate())+"-"+pad(d.getMonth()+1)+"-"+d.getFullYear(); }
 
@@ -518,7 +540,7 @@ input[type="date"].field::-webkit-date-and-time-value{text-align:start;margin:0}
       });
       var buf = pdf.output("arraybuffer");
       await saveFile("Maintenance Log "+stamp()+".pdf", buf, "application/pdf");
-    } catch(e){ msg.textContent = "Couldn’t make the PDF. Try again."; }
+    } catch(e){ msg.textContent = "Couldn’t make the PDF ("+(e && (e.message||e.name) || "error")+")"; }
   });
 
   /* ---------- Open a saved file ---------- */
